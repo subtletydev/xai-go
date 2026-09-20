@@ -7,11 +7,13 @@
 package v1
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -370,6 +372,11 @@ type GenerateImageRequest struct {
 	// Optional field to specify the image format to return the generated image(s)
 	// in. See ImageFormat enum for options.
 	Format ImageFormat `protobuf:"varint,11,opt,name=format,proto3,enum=xai_api.ImageFormat" json:"format,omitempty"`
+	// Optional quality setting for image generation.
+	// Only supported by grok-imagine models.
+	// Defaults to medium. Some models restrict the accepted values (a request
+	// outside the model's supported set is rejected).
+	Quality *ImageQuality `protobuf:"varint,12,opt,name=quality,proto3,enum=xai_api.ImageQuality,oneof" json:"quality,omitempty"`
 	// Optional aspect ratio for image generation/editing.
 	// Only supported by grok-imagine models.
 	// Defaults to 1:1 if not specified. Auto is only supported for image generation
@@ -385,9 +392,13 @@ type GenerateImageRequest struct {
 	// Optional list of input images for multi-reference image editing.
 	// Each image is either an image URL or a base64-encoded version of the image.
 	// This field cannot be set together with the `image` field.
-	Images        []*ImageUrlContent `protobuf:"bytes,17,rep,name=images,proto3" json:"images,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Images []*ImageUrlContent `protobuf:"bytes,17,rep,name=images,proto3" json:"images,omitempty"`
+	// Optional output storage configuration. When present, the generated
+	// image(s) are stored in the Files API and a file_id is returned in
+	// the response alongside the ephemeral URL.
+	StorageOptions *StorageOptions `protobuf:"bytes,19,opt,name=storage_options,json=storageOptions,proto3,oneof" json:"storage_options,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GenerateImageRequest) Reset() {
@@ -462,6 +473,13 @@ func (x *GenerateImageRequest) GetFormat() ImageFormat {
 	return ImageFormat_IMG_FORMAT_INVALID
 }
 
+func (x *GenerateImageRequest) GetQuality() ImageQuality {
+	if x != nil && x.Quality != nil {
+		return *x.Quality
+	}
+	return ImageQuality_IMG_QUALITY_INVALID
+}
+
 func (x *GenerateImageRequest) GetAspectRatio() ImageAspectRatio {
 	if x != nil && x.AspectRatio != nil {
 		return *x.AspectRatio
@@ -483,6 +501,232 @@ func (x *GenerateImageRequest) GetImages() []*ImageUrlContent {
 	return nil
 }
 
+func (x *GenerateImageRequest) GetStorageOptions() *StorageOptions {
+	if x != nil {
+		return x.StorageOptions
+	}
+	return nil
+}
+
+// Configuration for storing generation output in the Files API.
+type StorageOptions struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Filename for the stored file.
+	Filename string `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
+	// Seconds from now until the file auto-expires. If omitted, the file
+	// does not expire.
+	ExpiresAfter *int64 `protobuf:"varint,2,opt,name=expires_after,json=expiresAfter,proto3,oneof" json:"expires_after,omitempty"`
+	// When present, a public URL is created for the stored file after upload.
+	// The public URL is accessible without authentication.
+	// Omit entirely to store the file privately (no public URL).
+	PublicUrl     *PublicUrlOptions `protobuf:"bytes,3,opt,name=public_url,json=publicUrl,proto3,oneof" json:"public_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StorageOptions) Reset() {
+	*x = StorageOptions{}
+	mi := &file_xai_api_v1_image_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StorageOptions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StorageOptions) ProtoMessage() {}
+
+func (x *StorageOptions) ProtoReflect() protoreflect.Message {
+	mi := &file_xai_api_v1_image_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StorageOptions.ProtoReflect.Descriptor instead.
+func (*StorageOptions) Descriptor() ([]byte, []int) {
+	return file_xai_api_v1_image_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *StorageOptions) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *StorageOptions) GetExpiresAfter() int64 {
+	if x != nil && x.ExpiresAfter != nil {
+		return *x.ExpiresAfter
+	}
+	return 0
+}
+
+func (x *StorageOptions) GetPublicUrl() *PublicUrlOptions {
+	if x != nil {
+		return x.PublicUrl
+	}
+	return nil
+}
+
+// Configuration for creating a public URL alongside file storage.
+type PublicUrlOptions struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Seconds from now until the public URL expires.
+	//
+	// If omitted and the file has a TTL (`StorageOptions.expires_after`),
+	// the public URL inherits the file's expiry. If omitted and the file
+	// has no TTL, the public URL remains valid indefinitely until the file
+	// is deleted or the URL is explicitly revoked via `RevokePublicUrl`.
+	// The file itself always remains accessible via authenticated endpoints
+	// after the public URL expires.
+	ExpiresAfter  *int64 `protobuf:"varint,1,opt,name=expires_after,json=expiresAfter,proto3,oneof" json:"expires_after,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PublicUrlOptions) Reset() {
+	*x = PublicUrlOptions{}
+	mi := &file_xai_api_v1_image_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PublicUrlOptions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PublicUrlOptions) ProtoMessage() {}
+
+func (x *PublicUrlOptions) ProtoReflect() protoreflect.Message {
+	mi := &file_xai_api_v1_image_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PublicUrlOptions.ProtoReflect.Descriptor instead.
+func (*PublicUrlOptions) Descriptor() ([]byte, []int) {
+	return file_xai_api_v1_image_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *PublicUrlOptions) GetExpiresAfter() int64 {
+	if x != nil && x.ExpiresAfter != nil {
+		return *x.ExpiresAfter
+	}
+	return 0
+}
+
+// Information about a generated file stored in the Files API.
+type FileOutput struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Files API file_id of the stored file.
+	FileId string `protobuf:"bytes,1,opt,name=file_id,json=fileId,proto3" json:"file_id,omitempty"`
+	// Filename of the stored file.
+	Filename string `protobuf:"bytes,2,opt,name=filename,proto3" json:"filename,omitempty"`
+	// Public URL for the stored file. Only present when the request included
+	// storage_options.public_url and creation succeeded.
+	PublicUrl *string `protobuf:"bytes,4,opt,name=public_url,json=publicUrl,proto3,oneof" json:"public_url,omitempty"`
+	// When the public URL expires. Only present when public_url is set and
+	// has an independent expiry (i.e. the request specified
+	// public_url.expires_after, or the file has a TTL). Absent when the
+	// public URL is valid indefinitely.
+	PublicUrlExpiresAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=public_url_expires_at,json=publicUrlExpiresAt,proto3,oneof" json:"public_url_expires_at,omitempty"`
+	// When the stored file expires and will be automatically deleted. Only
+	// present when the file has an expiration (storage_options.expires_after
+	// was set).
+	ExpiresAt *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=expires_at,json=expiresAt,proto3,oneof" json:"expires_at,omitempty"`
+	// Human-readable error when storage_options.public_url was set but
+	// public URL creation failed. The file itself was stored successfully —
+	// the public URL can be retried via `CreatePublicUrl`.
+	PublicUrlError *string `protobuf:"bytes,7,opt,name=public_url_error,json=publicUrlError,proto3,oneof" json:"public_url_error,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *FileOutput) Reset() {
+	*x = FileOutput{}
+	mi := &file_xai_api_v1_image_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FileOutput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FileOutput) ProtoMessage() {}
+
+func (x *FileOutput) ProtoReflect() protoreflect.Message {
+	mi := &file_xai_api_v1_image_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FileOutput.ProtoReflect.Descriptor instead.
+func (*FileOutput) Descriptor() ([]byte, []int) {
+	return file_xai_api_v1_image_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *FileOutput) GetFileId() string {
+	if x != nil {
+		return x.FileId
+	}
+	return ""
+}
+
+func (x *FileOutput) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *FileOutput) GetPublicUrl() string {
+	if x != nil && x.PublicUrl != nil {
+		return *x.PublicUrl
+	}
+	return ""
+}
+
+func (x *FileOutput) GetPublicUrlExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.PublicUrlExpiresAt
+	}
+	return nil
+}
+
+func (x *FileOutput) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+func (x *FileOutput) GetPublicUrlError() string {
+	if x != nil && x.PublicUrlError != nil {
+		return *x.PublicUrlError
+	}
+	return ""
+}
+
 // The response from the image generation models containing the generated image(s).
 type ImageResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -498,7 +742,7 @@ type ImageResponse struct {
 
 func (x *ImageResponse) Reset() {
 	*x = ImageResponse{}
-	mi := &file_xai_api_v1_image_proto_msgTypes[1]
+	mi := &file_xai_api_v1_image_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -510,7 +754,7 @@ func (x *ImageResponse) String() string {
 func (*ImageResponse) ProtoMessage() {}
 
 func (x *ImageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_xai_api_v1_image_proto_msgTypes[1]
+	mi := &file_xai_api_v1_image_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -523,7 +767,7 @@ func (x *ImageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImageResponse.ProtoReflect.Descriptor instead.
 func (*ImageResponse) Descriptor() ([]byte, []int) {
-	return file_xai_api_v1_image_proto_rawDescGZIP(), []int{1}
+	return file_xai_api_v1_image_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ImageResponse) GetImages() []*GeneratedImage {
@@ -561,13 +805,20 @@ type GeneratedImage struct {
 	// The field will be true if the image respect moderation rules. Otherwise
 	// the field will be false and the image field is replaced by a placeholder.
 	RespectModeration bool `protobuf:"varint,4,opt,name=respect_moderation,json=respectModeration,proto3" json:"respect_moderation,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Storage info for the generated image. Only present when the request
+	// included `storage_options` and the upload succeeded.
+	FileOutput *FileOutput `protobuf:"bytes,8,opt,name=file_output,json=fileOutput,proto3,oneof" json:"file_output,omitempty"`
+	// Human-readable error when `storage_options` was set but the upload
+	// failed. Only present on storage failure; absent on success or when
+	// storage was not requested.
+	StorageError  *string `protobuf:"bytes,9,opt,name=storage_error,json=storageError,proto3,oneof" json:"storage_error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GeneratedImage) Reset() {
 	*x = GeneratedImage{}
-	mi := &file_xai_api_v1_image_proto_msgTypes[2]
+	mi := &file_xai_api_v1_image_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -579,7 +830,7 @@ func (x *GeneratedImage) String() string {
 func (*GeneratedImage) ProtoMessage() {}
 
 func (x *GeneratedImage) ProtoReflect() protoreflect.Message {
-	mi := &file_xai_api_v1_image_proto_msgTypes[2]
+	mi := &file_xai_api_v1_image_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -592,7 +843,7 @@ func (x *GeneratedImage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GeneratedImage.ProtoReflect.Descriptor instead.
 func (*GeneratedImage) Descriptor() ([]byte, []int) {
-	return file_xai_api_v1_image_proto_rawDescGZIP(), []int{2}
+	return file_xai_api_v1_image_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GeneratedImage) GetImage() isGeneratedImage_Image {
@@ -627,6 +878,20 @@ func (x *GeneratedImage) GetRespectModeration() bool {
 	return false
 }
 
+func (x *GeneratedImage) GetFileOutput() *FileOutput {
+	if x != nil {
+		return x.FileOutput
+	}
+	return nil
+}
+
+func (x *GeneratedImage) GetStorageError() string {
+	if x != nil && x.StorageError != nil {
+		return *x.StorageError
+	}
+	return ""
+}
+
 type isGeneratedImage_Image interface {
 	isGeneratedImage_Image()
 }
@@ -650,14 +915,14 @@ func (*GeneratedImage_Url) isGeneratedImage_Image() {}
 // Contains data relating to an image that is provided to the model.
 type ImageUrlContent struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// This is either an image URL or a base64-encoded version of the image.
-	// The following image formats are supported: PNG, JPG, and WebP.
-	// If an image URL is provided, the image will be downloaded for every API
-	// request without being cached. Images are fetched using
-	// "XaiImageApiFetch/1.0" user agent, and will timeout after 5 seconds.
-	// The image size is limited to 10 MiB. If the image download fails, the API
-	// request will fail as well.
-	ImageUrl string `protobuf:"bytes,1,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
+	// The source of the image — either a direct URL/base64 string or a
+	// file_id from the xAI Files API. Exactly one must be set.
+	//
+	// Types that are valid to be assigned to Source:
+	//
+	//	*ImageUrlContent_ImageUrl
+	//	*ImageUrlContent_FileId
+	Source isImageUrlContent_Source `protobuf_oneof:"source"`
 	// The level of pre-processing resolution that will be applied to the image.
 	Detail        ImageDetail `protobuf:"varint,2,opt,name=detail,proto3,enum=xai_api.ImageDetail" json:"detail,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -666,7 +931,7 @@ type ImageUrlContent struct {
 
 func (x *ImageUrlContent) Reset() {
 	*x = ImageUrlContent{}
-	mi := &file_xai_api_v1_image_proto_msgTypes[3]
+	mi := &file_xai_api_v1_image_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -678,7 +943,7 @@ func (x *ImageUrlContent) String() string {
 func (*ImageUrlContent) ProtoMessage() {}
 
 func (x *ImageUrlContent) ProtoReflect() protoreflect.Message {
-	mi := &file_xai_api_v1_image_proto_msgTypes[3]
+	mi := &file_xai_api_v1_image_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -691,12 +956,30 @@ func (x *ImageUrlContent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImageUrlContent.ProtoReflect.Descriptor instead.
 func (*ImageUrlContent) Descriptor() ([]byte, []int) {
-	return file_xai_api_v1_image_proto_rawDescGZIP(), []int{3}
+	return file_xai_api_v1_image_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ImageUrlContent) GetSource() isImageUrlContent_Source {
+	if x != nil {
+		return x.Source
+	}
+	return nil
 }
 
 func (x *ImageUrlContent) GetImageUrl() string {
 	if x != nil {
-		return x.ImageUrl
+		if x, ok := x.Source.(*ImageUrlContent_ImageUrl); ok {
+			return x.ImageUrl
+		}
+	}
+	return ""
+}
+
+func (x *ImageUrlContent) GetFileId() string {
+	if x != nil {
+		if x, ok := x.Source.(*ImageUrlContent_FileId); ok {
+			return x.FileId
+		}
 	}
 	return ""
 }
@@ -708,38 +991,99 @@ func (x *ImageUrlContent) GetDetail() ImageDetail {
 	return ImageDetail_DETAIL_INVALID
 }
 
+type isImageUrlContent_Source interface {
+	isImageUrlContent_Source()
+}
+
+type ImageUrlContent_ImageUrl struct {
+	// This is either an image URL or a base64-encoded version of the image.
+	// The following image formats are supported: PNG, JPG, and WebP.
+	// If an image URL is provided, the image will be downloaded for every API
+	// request without being cached. Images are fetched using
+	// "XaiImageApiFetch/1.0" user agent, and will timeout after 5 seconds.
+	// The image size is limited to 10 MiB. If the image download fails, the API
+	// request will fail as well.
+	ImageUrl string `protobuf:"bytes,1,opt,name=image_url,json=imageUrl,proto3,oneof"`
+}
+
+type ImageUrlContent_FileId struct {
+	// A file ID from the xAI Files API. The file must be an image
+	// (JPEG, PNG, or WebP).
+	FileId string `protobuf:"bytes,3,opt,name=file_id,json=fileId,proto3,oneof"`
+}
+
+func (*ImageUrlContent_ImageUrl) isImageUrlContent_Source() {}
+
+func (*ImageUrlContent_FileId) isImageUrlContent_Source() {}
+
 var File_xai_api_v1_image_proto protoreflect.FileDescriptor
 
 const file_xai_api_v1_image_proto_rawDesc = "" +
 	"\n" +
-	"\x16xai/api/v1/image.proto\x12\axai_api\x1a\x16xai/api/v1/usage.proto\"\xa9\x03\n" +
+	"\x16xai/api/v1/image.proto\x12\axai_api\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16xai/api/v1/usage.proto\"\xc6\x04\n" +
 	"\x14GenerateImageRequest\x12\x16\n" +
 	"\x06prompt\x18\x01 \x01(\tR\x06prompt\x12.\n" +
 	"\x05image\x18\x05 \x01(\v2\x18.xai_api.ImageUrlContentR\x05image\x12\x14\n" +
 	"\x05model\x18\x02 \x01(\tR\x05model\x12\x11\n" +
 	"\x01n\x18\x03 \x01(\x05H\x00R\x01n\x88\x01\x01\x12\x12\n" +
 	"\x04user\x18\x04 \x01(\tR\x04user\x12,\n" +
-	"\x06format\x18\v \x01(\x0e2\x14.xai_api.ImageFormatR\x06format\x12A\n" +
-	"\faspect_ratio\x18\x0e \x01(\x0e2\x19.xai_api.ImageAspectRatioH\x01R\vaspectRatio\x88\x01\x01\x12=\n" +
+	"\x06format\x18\v \x01(\x0e2\x14.xai_api.ImageFormatR\x06format\x124\n" +
+	"\aquality\x18\f \x01(\x0e2\x15.xai_api.ImageQualityH\x01R\aquality\x88\x01\x01\x12A\n" +
+	"\faspect_ratio\x18\x0e \x01(\x0e2\x19.xai_api.ImageAspectRatioH\x02R\vaspectRatio\x88\x01\x01\x12=\n" +
 	"\n" +
-	"resolution\x18\x0f \x01(\x0e2\x18.xai_api.ImageResolutionH\x02R\n" +
+	"resolution\x18\x0f \x01(\x0e2\x18.xai_api.ImageResolutionH\x03R\n" +
 	"resolution\x88\x01\x01\x120\n" +
-	"\x06images\x18\x11 \x03(\v2\x18.xai_api.ImageUrlContentR\x06imagesB\x04\n" +
-	"\x02_nB\x0f\n" +
+	"\x06images\x18\x11 \x03(\v2\x18.xai_api.ImageUrlContentR\x06images\x12E\n" +
+	"\x0fstorage_options\x18\x13 \x01(\v2\x17.xai_api.StorageOptionsH\x04R\x0estorageOptions\x88\x01\x01B\x04\n" +
+	"\x02_nB\n" +
+	"\n" +
+	"\b_qualityB\x0f\n" +
 	"\r_aspect_ratioB\r\n" +
-	"\v_resolutionJ\x04\b\r\x10\x0e\"\x84\x01\n" +
+	"\v_resolutionB\x12\n" +
+	"\x10_storage_optionsJ\x04\b\r\x10\x0e\"\xb6\x01\n" +
+	"\x0eStorageOptions\x12\x1a\n" +
+	"\bfilename\x18\x01 \x01(\tR\bfilename\x12(\n" +
+	"\rexpires_after\x18\x02 \x01(\x03H\x00R\fexpiresAfter\x88\x01\x01\x12=\n" +
+	"\n" +
+	"public_url\x18\x03 \x01(\v2\x19.xai_api.PublicUrlOptionsH\x01R\tpublicUrl\x88\x01\x01B\x10\n" +
+	"\x0e_expires_afterB\r\n" +
+	"\v_public_url\"N\n" +
+	"\x10PublicUrlOptions\x12(\n" +
+	"\rexpires_after\x18\x01 \x01(\x03H\x00R\fexpiresAfter\x88\x01\x01B\x10\n" +
+	"\x0e_expires_after\"\xfb\x02\n" +
+	"\n" +
+	"FileOutput\x12\x17\n" +
+	"\afile_id\x18\x01 \x01(\tR\x06fileId\x12\x1a\n" +
+	"\bfilename\x18\x02 \x01(\tR\bfilename\x12\"\n" +
+	"\n" +
+	"public_url\x18\x04 \x01(\tH\x00R\tpublicUrl\x88\x01\x01\x12R\n" +
+	"\x15public_url_expires_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampH\x01R\x12publicUrlExpiresAt\x88\x01\x01\x12>\n" +
+	"\n" +
+	"expires_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampH\x02R\texpiresAt\x88\x01\x01\x12-\n" +
+	"\x10public_url_error\x18\a \x01(\tH\x03R\x0epublicUrlError\x88\x01\x01B\r\n" +
+	"\v_public_urlB\x18\n" +
+	"\x16_public_url_expires_atB\r\n" +
+	"\v_expires_atB\x13\n" +
+	"\x11_public_url_errorJ\x04\b\x03\x10\x04\"\x84\x01\n" +
 	"\rImageResponse\x12/\n" +
 	"\x06images\x18\x01 \x03(\v2\x17.xai_api.GeneratedImageR\x06images\x12\x14\n" +
 	"\x05model\x18\x02 \x01(\tR\x05model\x12,\n" +
-	"\x05usage\x18\x03 \x01(\v2\x16.xai_api.SamplingUsageR\x05usage\"|\n" +
+	"\x05usage\x18\x03 \x01(\v2\x16.xai_api.SamplingUsageR\x05usage\"\x83\x02\n" +
 	"\x0eGeneratedImage\x12\x18\n" +
 	"\x06base64\x18\x01 \x01(\tH\x00R\x06base64\x12\x12\n" +
 	"\x03url\x18\x03 \x01(\tH\x00R\x03url\x12-\n" +
-	"\x12respect_moderation\x18\x04 \x01(\bR\x11respectModerationB\a\n" +
-	"\x05imageJ\x04\b\x02\x10\x03\"\\\n" +
-	"\x0fImageUrlContent\x12\x1b\n" +
-	"\timage_url\x18\x01 \x01(\tR\bimageUrl\x12,\n" +
-	"\x06detail\x18\x02 \x01(\x0e2\x14.xai_api.ImageDetailR\x06detail*S\n" +
+	"\x12respect_moderation\x18\x04 \x01(\bR\x11respectModeration\x129\n" +
+	"\vfile_output\x18\b \x01(\v2\x13.xai_api.FileOutputH\x01R\n" +
+	"fileOutput\x88\x01\x01\x12(\n" +
+	"\rstorage_error\x18\t \x01(\tH\x02R\fstorageError\x88\x01\x01B\a\n" +
+	"\x05imageB\x0e\n" +
+	"\f_file_outputB\x10\n" +
+	"\x0e_storage_errorJ\x04\b\x02\x10\x03\"\x83\x01\n" +
+	"\x0fImageUrlContent\x12\x1d\n" +
+	"\timage_url\x18\x01 \x01(\tH\x00R\bimageUrl\x12\x19\n" +
+	"\afile_id\x18\x03 \x01(\tH\x00R\x06fileId\x12,\n" +
+	"\x06detail\x18\x02 \x01(\x0e2\x14.xai_api.ImageDetailR\x06detailB\b\n" +
+	"\x06source*S\n" +
 	"\vImageDetail\x12\x12\n" +
 	"\x0eDETAIL_INVALID\x10\x00\x12\x0f\n" +
 	"\vDETAIL_AUTO\x10\x01\x12\x0e\n" +
@@ -794,35 +1138,45 @@ func file_xai_api_v1_image_proto_rawDescGZIP() []byte {
 }
 
 var file_xai_api_v1_image_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_xai_api_v1_image_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_xai_api_v1_image_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_xai_api_v1_image_proto_goTypes = []any{
-	(ImageDetail)(0),             // 0: xai_api.ImageDetail
-	(ImageFormat)(0),             // 1: xai_api.ImageFormat
-	(ImageQuality)(0),            // 2: xai_api.ImageQuality
-	(ImageAspectRatio)(0),        // 3: xai_api.ImageAspectRatio
-	(ImageResolution)(0),         // 4: xai_api.ImageResolution
-	(*GenerateImageRequest)(nil), // 5: xai_api.GenerateImageRequest
-	(*ImageResponse)(nil),        // 6: xai_api.ImageResponse
-	(*GeneratedImage)(nil),       // 7: xai_api.GeneratedImage
-	(*ImageUrlContent)(nil),      // 8: xai_api.ImageUrlContent
-	(*SamplingUsage)(nil),        // 9: xai_api.SamplingUsage
+	(ImageDetail)(0),              // 0: xai_api.ImageDetail
+	(ImageFormat)(0),              // 1: xai_api.ImageFormat
+	(ImageQuality)(0),             // 2: xai_api.ImageQuality
+	(ImageAspectRatio)(0),         // 3: xai_api.ImageAspectRatio
+	(ImageResolution)(0),          // 4: xai_api.ImageResolution
+	(*GenerateImageRequest)(nil),  // 5: xai_api.GenerateImageRequest
+	(*StorageOptions)(nil),        // 6: xai_api.StorageOptions
+	(*PublicUrlOptions)(nil),      // 7: xai_api.PublicUrlOptions
+	(*FileOutput)(nil),            // 8: xai_api.FileOutput
+	(*ImageResponse)(nil),         // 9: xai_api.ImageResponse
+	(*GeneratedImage)(nil),        // 10: xai_api.GeneratedImage
+	(*ImageUrlContent)(nil),       // 11: xai_api.ImageUrlContent
+	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
+	(*SamplingUsage)(nil),         // 13: xai_api.SamplingUsage
 }
 var file_xai_api_v1_image_proto_depIdxs = []int32{
-	8, // 0: xai_api.GenerateImageRequest.image:type_name -> xai_api.ImageUrlContent
-	1, // 1: xai_api.GenerateImageRequest.format:type_name -> xai_api.ImageFormat
-	3, // 2: xai_api.GenerateImageRequest.aspect_ratio:type_name -> xai_api.ImageAspectRatio
-	4, // 3: xai_api.GenerateImageRequest.resolution:type_name -> xai_api.ImageResolution
-	8, // 4: xai_api.GenerateImageRequest.images:type_name -> xai_api.ImageUrlContent
-	7, // 5: xai_api.ImageResponse.images:type_name -> xai_api.GeneratedImage
-	9, // 6: xai_api.ImageResponse.usage:type_name -> xai_api.SamplingUsage
-	0, // 7: xai_api.ImageUrlContent.detail:type_name -> xai_api.ImageDetail
-	5, // 8: xai_api.Image.GenerateImage:input_type -> xai_api.GenerateImageRequest
-	6, // 9: xai_api.Image.GenerateImage:output_type -> xai_api.ImageResponse
-	9, // [9:10] is the sub-list for method output_type
-	8, // [8:9] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	11, // 0: xai_api.GenerateImageRequest.image:type_name -> xai_api.ImageUrlContent
+	1,  // 1: xai_api.GenerateImageRequest.format:type_name -> xai_api.ImageFormat
+	2,  // 2: xai_api.GenerateImageRequest.quality:type_name -> xai_api.ImageQuality
+	3,  // 3: xai_api.GenerateImageRequest.aspect_ratio:type_name -> xai_api.ImageAspectRatio
+	4,  // 4: xai_api.GenerateImageRequest.resolution:type_name -> xai_api.ImageResolution
+	11, // 5: xai_api.GenerateImageRequest.images:type_name -> xai_api.ImageUrlContent
+	6,  // 6: xai_api.GenerateImageRequest.storage_options:type_name -> xai_api.StorageOptions
+	7,  // 7: xai_api.StorageOptions.public_url:type_name -> xai_api.PublicUrlOptions
+	12, // 8: xai_api.FileOutput.public_url_expires_at:type_name -> google.protobuf.Timestamp
+	12, // 9: xai_api.FileOutput.expires_at:type_name -> google.protobuf.Timestamp
+	10, // 10: xai_api.ImageResponse.images:type_name -> xai_api.GeneratedImage
+	13, // 11: xai_api.ImageResponse.usage:type_name -> xai_api.SamplingUsage
+	8,  // 12: xai_api.GeneratedImage.file_output:type_name -> xai_api.FileOutput
+	0,  // 13: xai_api.ImageUrlContent.detail:type_name -> xai_api.ImageDetail
+	5,  // 14: xai_api.Image.GenerateImage:input_type -> xai_api.GenerateImageRequest
+	9,  // 15: xai_api.Image.GenerateImage:output_type -> xai_api.ImageResponse
+	15, // [15:16] is the sub-list for method output_type
+	14, // [14:15] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_xai_api_v1_image_proto_init() }
@@ -832,9 +1186,16 @@ func file_xai_api_v1_image_proto_init() {
 	}
 	file_xai_api_v1_usage_proto_init()
 	file_xai_api_v1_image_proto_msgTypes[0].OneofWrappers = []any{}
-	file_xai_api_v1_image_proto_msgTypes[2].OneofWrappers = []any{
+	file_xai_api_v1_image_proto_msgTypes[1].OneofWrappers = []any{}
+	file_xai_api_v1_image_proto_msgTypes[2].OneofWrappers = []any{}
+	file_xai_api_v1_image_proto_msgTypes[3].OneofWrappers = []any{}
+	file_xai_api_v1_image_proto_msgTypes[5].OneofWrappers = []any{
 		(*GeneratedImage_Base64)(nil),
 		(*GeneratedImage_Url)(nil),
+	}
+	file_xai_api_v1_image_proto_msgTypes[6].OneofWrappers = []any{
+		(*ImageUrlContent_ImageUrl)(nil),
+		(*ImageUrlContent_FileId)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -842,7 +1203,7 @@ func file_xai_api_v1_image_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_xai_api_v1_image_proto_rawDesc), len(file_xai_api_v1_image_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   4,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
