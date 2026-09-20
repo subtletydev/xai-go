@@ -7,11 +7,12 @@
 package v1
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -87,6 +88,7 @@ const (
 	ServerSideTool_SERVER_SIDE_TOOL_MCP                ServerSideTool = 7
 	ServerSideTool_SERVER_SIDE_TOOL_ATTACHMENT_SEARCH  ServerSideTool = 8
 	ServerSideTool_SERVER_SIDE_TOOL_IMAGE_SEARCH       ServerSideTool = 10
+	ServerSideTool_SERVER_SIDE_TOOL_IMAGE_GENERATION   ServerSideTool = 11
 )
 
 // Enum value maps for ServerSideTool.
@@ -102,6 +104,7 @@ var (
 		7:  "SERVER_SIDE_TOOL_MCP",
 		8:  "SERVER_SIDE_TOOL_ATTACHMENT_SEARCH",
 		10: "SERVER_SIDE_TOOL_IMAGE_SEARCH",
+		11: "SERVER_SIDE_TOOL_IMAGE_GENERATION",
 	}
 	ServerSideTool_value = map[string]int32{
 		"SERVER_SIDE_TOOL_INVALID":            0,
@@ -114,6 +117,7 @@ var (
 		"SERVER_SIDE_TOOL_MCP":                7,
 		"SERVER_SIDE_TOOL_ATTACHMENT_SEARCH":  8,
 		"SERVER_SIDE_TOOL_IMAGE_SEARCH":       10,
+		"SERVER_SIDE_TOOL_IMAGE_GENERATION":   11,
 	}
 )
 
@@ -359,7 +363,7 @@ const file_xai_api_v1_usage_proto_rawDesc = "" +
 	"\vServiceTier\x12\x1c\n" +
 	"\x18SERVICE_TIER_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14SERVICE_TIER_DEFAULT\x10\x01\x12\x19\n" +
-	"\x15SERVICE_TIER_PRIORITY\x10\x02*\xe5\x02\n" +
+	"\x15SERVICE_TIER_PRIORITY\x10\x02*\x8c\x03\n" +
 	"\x0eServerSideTool\x12\x1c\n" +
 	"\x18SERVER_SIDE_TOOL_INVALID\x10\x00\x12\x1f\n" +
 	"\x1bSERVER_SIDE_TOOL_WEB_SEARCH\x10\x01\x12\x1d\n" +
@@ -371,7 +375,8 @@ const file_xai_api_v1_usage_proto_rawDesc = "" +
 	"\x14SERVER_SIDE_TOOL_MCP\x10\a\x12&\n" +
 	"\"SERVER_SIDE_TOOL_ATTACHMENT_SEARCH\x10\b\x12!\n" +
 	"\x1dSERVER_SIDE_TOOL_IMAGE_SEARCH\x10\n" +
-	"B\x81\x01\n" +
+	"\x12%\n" +
+	"!SERVER_SIDE_TOOL_IMAGE_GENERATION\x10\vB\x81\x01\n" +
 	"\vcom.xai_apiB\n" +
 	"UsageProtoP\x01Z.github.com/xai-org/xai-proto/gen/go/xai/api/v1\xa2\x02\x03XXX\xaa\x02\x06XaiApi\xca\x02\x06XaiApi\xe2\x02\x12XaiApi\\GPBMetadata\xea\x02\x06XaiApib\x06proto3"
 

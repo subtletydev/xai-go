@@ -10,12 +10,13 @@
 package analytics
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -628,8 +629,8 @@ func (x *AnalyticsScheme) GetGroupBy() []string {
 // Specifies a value and which aggregation methods it supports.
 type ValueScheme struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Aggregations  []Aggregation          `protobuf:"varint,2,rep,packed,name=aggregations,proto3,enum=prod.clickhouse_analytics.Aggregation" json:"aggregations,omitempty"`
+	Name          string        `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Aggregations  []Aggregation `protobuf:"varint,2,rep,packed,name=aggregations,proto3,enum=prod.clickhouse_analytics.Aggregation" json:"aggregations,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

@@ -8,7 +8,8 @@ package v1
 
 import (
 	context "context"
-	analytics "github.com/subtletydev/xai-go/gen/go/xai/shared/analytics"
+
+	analytics "github.com/xai-org/xai-proto/gen/go/xai/shared/analytics"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

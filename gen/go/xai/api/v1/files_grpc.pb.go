@@ -8,6 +8,7 @@ package v1
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -24,6 +25,8 @@ const (
 	Files_RetrieveFile_FullMethodName        = "/xai_api.Files/RetrieveFile"
 	Files_DeleteFile_FullMethodName          = "/xai_api.Files/DeleteFile"
 	Files_RetrieveFileContent_FullMethodName = "/xai_api.Files/RetrieveFileContent"
+	Files_CreatePublicUrl_FullMethodName     = "/xai_api.Files/CreatePublicUrl"
+	Files_RevokePublicUrl_FullMethodName     = "/xai_api.Files/RevokePublicUrl"
 )
 
 // FilesClient is the client API for Files service.
@@ -57,6 +60,43 @@ type FilesClient interface {
 	// Stream the file's contents in chunks of up to 5 MB, in order.
 	// Concatenate `data` from every chunk to reconstruct the file.
 	RetrieveFileContent(ctx context.Context, in *RetrieveFileContentRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[FileContentChunk], error)
+	// Create a public, unauthenticated URL for a file, accessible without an
+	// API key. Only images, videos, and PDFs can be made public.
+	//
+	// A file can have at most one public URL at a time. Calling this on a
+	// file that already has a public URL returns the existing URL. To update
+	// the expiry, call again with a new `expires_after` value.
+	//
+	// **Public URL expiry behavior:**
+	//
+	//   - If `expires_after` is set, the public URL expires that many seconds
+	//     from now, independently of the file's own TTL.
+	//   - If `expires_after` is omitted and the file has a TTL
+	//     (`UploadFileInit.expires_after` was set at upload), the public URL
+	//     automatically inherits the file's expiry — it will expire at the
+	//     same time as the file.
+	//   - If `expires_after` is omitted and the file has no TTL, the public
+	//     URL remains valid indefinitely (until explicitly revoked or the file
+	//     is deleted).
+	//
+	// **Automatic revocation:**
+	//
+	// A public URL is automatically revoked when the file is deleted (by the
+	// user or by TTL expiry). Revocation may not take effect immediately, so
+	// the URL can remain accessible for a short period after the file or the
+	// public URL expires. Call `RevokePublicUrl` to revoke immediately.
+	CreatePublicUrl(ctx context.Context, in *CreatePublicUrlRequest, opts ...grpc.CallOption) (*CreatePublicUrlResponse, error)
+	// Revoke the public URL for a file. After revocation the public URL is
+	// no longer accessible, while the original file remains accessible via
+	// authenticated endpoints.
+	//
+	// Public URLs are also automatically revoked when the file is deleted,
+	// when the file's TTL elapses, or when the public URL's own expiry
+	// elapses. Automatic revocation may not take effect immediately; use this
+	// RPC to revoke a public URL right away.
+	//
+	// Returns success if the file has no public URL (nothing to revoke).
+	RevokePublicUrl(ctx context.Context, in *RevokePublicUrlRequest, opts ...grpc.CallOption) (*RevokePublicUrlResponse, error)
 }
 
 type filesClient struct {
@@ -129,6 +169,26 @@ func (c *filesClient) RetrieveFileContent(ctx context.Context, in *RetrieveFileC
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Files_RetrieveFileContentClient = grpc.ServerStreamingClient[FileContentChunk]
 
+func (c *filesClient) CreatePublicUrl(ctx context.Context, in *CreatePublicUrlRequest, opts ...grpc.CallOption) (*CreatePublicUrlResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreatePublicUrlResponse)
+	err := c.cc.Invoke(ctx, Files_CreatePublicUrl_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *filesClient) RevokePublicUrl(ctx context.Context, in *RevokePublicUrlRequest, opts ...grpc.CallOption) (*RevokePublicUrlResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RevokePublicUrlResponse)
+	err := c.cc.Invoke(ctx, Files_RevokePublicUrl_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FilesServer is the server API for Files service.
 // All implementations must embed UnimplementedFilesServer
 // for forward compatibility.
@@ -160,6 +220,43 @@ type FilesServer interface {
 	// Stream the file's contents in chunks of up to 5 MB, in order.
 	// Concatenate `data` from every chunk to reconstruct the file.
 	RetrieveFileContent(*RetrieveFileContentRequest, grpc.ServerStreamingServer[FileContentChunk]) error
+	// Create a public, unauthenticated URL for a file, accessible without an
+	// API key. Only images, videos, and PDFs can be made public.
+	//
+	// A file can have at most one public URL at a time. Calling this on a
+	// file that already has a public URL returns the existing URL. To update
+	// the expiry, call again with a new `expires_after` value.
+	//
+	// **Public URL expiry behavior:**
+	//
+	//   - If `expires_after` is set, the public URL expires that many seconds
+	//     from now, independently of the file's own TTL.
+	//   - If `expires_after` is omitted and the file has a TTL
+	//     (`UploadFileInit.expires_after` was set at upload), the public URL
+	//     automatically inherits the file's expiry — it will expire at the
+	//     same time as the file.
+	//   - If `expires_after` is omitted and the file has no TTL, the public
+	//     URL remains valid indefinitely (until explicitly revoked or the file
+	//     is deleted).
+	//
+	// **Automatic revocation:**
+	//
+	// A public URL is automatically revoked when the file is deleted (by the
+	// user or by TTL expiry). Revocation may not take effect immediately, so
+	// the URL can remain accessible for a short period after the file or the
+	// public URL expires. Call `RevokePublicUrl` to revoke immediately.
+	CreatePublicUrl(context.Context, *CreatePublicUrlRequest) (*CreatePublicUrlResponse, error)
+	// Revoke the public URL for a file. After revocation the public URL is
+	// no longer accessible, while the original file remains accessible via
+	// authenticated endpoints.
+	//
+	// Public URLs are also automatically revoked when the file is deleted,
+	// when the file's TTL elapses, or when the public URL's own expiry
+	// elapses. Automatic revocation may not take effect immediately; use this
+	// RPC to revoke a public URL right away.
+	//
+	// Returns success if the file has no public URL (nothing to revoke).
+	RevokePublicUrl(context.Context, *RevokePublicUrlRequest) (*RevokePublicUrlResponse, error)
 	mustEmbedUnimplementedFilesServer()
 }
 
@@ -184,6 +281,12 @@ func (UnimplementedFilesServer) DeleteFile(context.Context, *DeleteFileRequest) 
 }
 func (UnimplementedFilesServer) RetrieveFileContent(*RetrieveFileContentRequest, grpc.ServerStreamingServer[FileContentChunk]) error {
 	return status.Errorf(codes.Unimplemented, "method RetrieveFileContent not implemented")
+}
+func (UnimplementedFilesServer) CreatePublicUrl(context.Context, *CreatePublicUrlRequest) (*CreatePublicUrlResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreatePublicUrl not implemented")
+}
+func (UnimplementedFilesServer) RevokePublicUrl(context.Context, *RevokePublicUrlRequest) (*RevokePublicUrlResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RevokePublicUrl not implemented")
 }
 func (UnimplementedFilesServer) mustEmbedUnimplementedFilesServer() {}
 func (UnimplementedFilesServer) testEmbeddedByValue()               {}
@@ -278,6 +381,42 @@ func _Files_RetrieveFileContent_Handler(srv interface{}, stream grpc.ServerStrea
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Files_RetrieveFileContentServer = grpc.ServerStreamingServer[FileContentChunk]
 
+func _Files_CreatePublicUrl_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreatePublicUrlRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FilesServer).CreatePublicUrl(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Files_CreatePublicUrl_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FilesServer).CreatePublicUrl(ctx, req.(*CreatePublicUrlRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Files_RevokePublicUrl_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokePublicUrlRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FilesServer).RevokePublicUrl(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Files_RevokePublicUrl_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FilesServer).RevokePublicUrl(ctx, req.(*RevokePublicUrlRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Files_ServiceDesc is the grpc.ServiceDesc for Files service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -296,6 +435,14 @@ var Files_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteFile",
 			Handler:    _Files_DeleteFile_Handler,
+		},
+		{
+			MethodName: "CreatePublicUrl",
+			Handler:    _Files_CreatePublicUrl_Handler,
+		},
+		{
+			MethodName: "RevokePublicUrl",
+			Handler:    _Files_RevokePublicUrl_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

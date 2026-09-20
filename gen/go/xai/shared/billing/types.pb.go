@@ -7,11 +7,12 @@
 package billing
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -472,8 +473,8 @@ type UsBankAccountDetails struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	BankName      string                 `protobuf:"bytes,10,opt,name=bank_name,json=bankName,proto3" json:"bank_name,omitempty"`
 	Last4         string                 `protobuf:"bytes,20,opt,name=last4,proto3" json:"last4,omitempty"`
-	RoutingNumber string                 `protobuf:"bytes,30,opt,name=routing_number,json=routingNumber,proto3" json:"routing_number,omitempty"`
-	Blocked       *UsBankAccountBlocked  `protobuf:"bytes,40,opt,name=blocked,proto3" json:"blocked,omitempty"`
+	RoutingNumber string                `protobuf:"bytes,30,opt,name=routing_number,json=routingNumber,proto3" json:"routing_number,omitempty"`
+	Blocked       *UsBankAccountBlocked `protobuf:"bytes,40,opt,name=blocked,proto3" json:"blocked,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -584,12 +585,12 @@ func (x *LinkDetails) GetEmail() string {
 // Payment method and details.
 type PaymentMethod struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
-	PaymentMethodId      string                 `protobuf:"bytes,10,opt,name=payment_method_id,json=paymentMethodId,proto3" json:"payment_method_id,omitempty"`
-	BillingInfo          *BillingInfo           `protobuf:"bytes,20,opt,name=billing_info,json=billingInfo,proto3" json:"billing_info,omitempty"`
-	CardDetails          *CardDetails           `protobuf:"bytes,30,opt,name=card_details,json=cardDetails,proto3" json:"card_details,omitempty"`
-	UsBankAccountDetails *UsBankAccountDetails  `protobuf:"bytes,31,opt,name=us_bank_account_details,json=usBankAccountDetails,proto3" json:"us_bank_account_details,omitempty"`
-	LinkDetails          *LinkDetails           `protobuf:"bytes,32,opt,name=link_details,json=linkDetails,proto3" json:"link_details,omitempty"`
-	PaymentType          string                 `protobuf:"bytes,40,opt,name=payment_type,json=paymentType,proto3" json:"payment_type,omitempty"`
+	PaymentMethodId      string                `protobuf:"bytes,10,opt,name=payment_method_id,json=paymentMethodId,proto3" json:"payment_method_id,omitempty"`
+	BillingInfo          *BillingInfo          `protobuf:"bytes,20,opt,name=billing_info,json=billingInfo,proto3" json:"billing_info,omitempty"`
+	CardDetails          *CardDetails          `protobuf:"bytes,30,opt,name=card_details,json=cardDetails,proto3" json:"card_details,omitempty"`
+	UsBankAccountDetails *UsBankAccountDetails `protobuf:"bytes,31,opt,name=us_bank_account_details,json=usBankAccountDetails,proto3" json:"us_bank_account_details,omitempty"`
+	LinkDetails          *LinkDetails          `protobuf:"bytes,32,opt,name=link_details,json=linkDetails,proto3" json:"link_details,omitempty"`
+	PaymentType          string                `protobuf:"bytes,40,opt,name=payment_type,json=paymentType,proto3" json:"payment_type,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
