@@ -11,8 +11,8 @@ import (
 	sync "sync"
 	unsafe "unsafe"
 
-	analytics "github.com/xai-org/xai-proto/gen/go/xai/shared/analytics"
-	billing "github.com/xai-org/xai-proto/gen/go/xai/shared/billing"
+	analytics "github.com/subtletydev/xai-go/gen/go/xai/shared/analytics"
+	billing "github.com/subtletydev/xai-go/gen/go/xai/shared/billing"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	_ "google.golang.org/protobuf/types/known/emptypb"

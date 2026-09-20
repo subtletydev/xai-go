@@ -176,9 +176,11 @@ The code under `gen/` is generated from xAI's `.proto` definitions and is checke
 you regenerate it:
 
 - The generated `go_package` options point at `github.com/xai-org/xai-proto/...`, which does not
-  publish those packages. The imports in `gen/go/xai/management_api/v1` are rewritten to this
-  module's path so the tree compiles; re-apply that (or set a `go_package`/`M` override at
-  generation time) after regenerating.
+  publish those packages, so the tree does not compile as generated. Run
+  `./scripts/fix-gen-imports.sh` afterwards to rewrite those imports to this module's path (or set
+  a `go_package`/`M` override at generation time instead). The script only touches import
+  statements: the same path also appears inside the serialized file descriptors, where it carries a
+  length prefix and must be left alone.
 - New services need a corresponding field added to `Client` in `client.go`.
 
 ## Contributing
